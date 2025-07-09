@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Result System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f3;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 400px;
+      margin: 60px auto;
+      padding: 30px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #4a90e2;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    input[type="file"] {
+      padding: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #4a90e2;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .link {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #4a90e2;
+      cursor: pointer;
+    }
+    .dashboard, .admin-panel, .register, .forgot {
+      display: none;
+    }
+    table {
+      width: 100%;
+      margin-top: 15px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+    th {
+      background-color: #f9f9f9;
+    }
+    .actions button {
+      margin: 5px;
+    }
+    #studentPhoto {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 2px solid #4a90e2;
+      object-fit: cover;
+      display: block;
+      margin: 10px auto;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printArea, #printArea * {
+        visibility: visible;
+      }
+      #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login Page -->
+<div class="container" id="login">
+  <h2>Student/Admin Login</h2>
+  <input type="text" id="loginUsername" placeholder="Username">
+  <input type="password" id="loginPassword" placeholder="Password">
+  <select id="loginType">
+    <option value="student">Student</option>
+    <option value="admin">Admin</option>
+  </select>
+  <button onclick="handleLogin()">Login</button>
+  <div class="link" onclick="showRegister()">Create Account</div>
+  <div class="link" onclick="showForgot()">Forgot Password?</div>
+</div>
+
+<!-- Register Page -->
+<div class="container register" id="register">
+  <h2>Create Account</h2>
+  <input type="text" id="regUsername" placeholder="Username">
+  <input type="password" id="regPassword" placeholder="Password">
+  <input type="text" id="regName" placeholder="Full Name">
+  <input type="text" id="regGroup" placeholder="Group (e.g., MPC)">
+  <input type="text" id="regGender" placeholder="Gender">
+  <input type="file" id="regPhoto" accept="image/*">
+  <button onclick="createAccount()">Register</button>
+  <div class="link" onclick="showLogin()">Back to Login</div>
+</div>
+
+<!-- Forgot Password -->
+<div class="container forgot" id="forgot">
+  <h2>Reset Password</h2>
+  <input type="text" id="forgotUsername" placeholder="Username">
+  <input type="text" id="newPassword" placeholder="New Password">
+  <button onclick="resetPassword()">Reset</button>
+  <div class="link" onclick="showLogin()">Back to Login</div>
+</div>
+
+<!-- Student Dashboard -->
+<div class="container dashboard" id="dashboard">
+  <h2>Student Dashboard</h2>
+  <div id="printArea">
+    <img id="studentPhoto" src="" alt="Student Photo">
+    <div id="studentDetails"></div>
+    <table id="resultTable"></table>
+    <div id="resultSummary" style="margin-top: 10px; font-weight: bold; text-align: center;"></div>
+  </div>
+  <button onclick="window.print()">Print Result</button>
+  <div class="link" onclick="logout()">Logout</div>
+</div>
+
+<!-- Admin Panel -->
+<div class="container admin-panel" id="adminPanel">
+  <h2>Admin Panel</h2>
+  <table id="adminTable"></table>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<script>
+  let users = JSON.parse(localStorage.getItem('users')) || {
+    admin: { password: 'admin123', role: 'admin' }
+  };
+
+  function saveUsers() {
+    localStorage.setItem('users', JSON.stringify(users));
+  }
+
+  function handleLogin() {
+    const uname = document.getElementById('loginUsername').value;
+    const pwd = document.getElementById('loginPassword').value;
+    const type = document.getElementById('loginType').value;
+
+    const user = users[uname];
+    if (user && user.password === pwd && user.role === type) {
+      if (type === 'student') {
+        showDashboard(uname);
+      } else {
+        showAdminPanel();
+      }
+    } else {
+      alert("Invalid credentials");
+    }
+  }
+
+  function showDashboard(username) {
+    hideAll();
+    document.getElementById('dashboard').style.display = 'block';
+    const user = users[username];
+
+    document.getElementById('studentPhoto').src = user.photo || '';
+    document.getElementById('studentDetails').innerHTML = `
+      <p><b>Name:</b> ${user.name}</p>
+      <p><b>Group:</b> ${user.group}</p>
+      <p><b>Gender:</b> ${user.gender}</p>
+    `;
+
+    const table = document.getElementById('resultTable');
+    let total = 0, subjects = 0;
+    table.innerHTML = `<tr><th>Subject</th><th>Marks</th></tr>`;
+    for (let sub in user.results) {
+      const mark = user.results[sub];
+      if (mark !== null && mark !== undefined && mark !== "") {
+        table.innerHTML += `<tr><td>${sub}</td><td>${mark}</td></tr>`;
+        total += mark;
+        subjects++;
+      }
+    }
+    const percentage = subjects ? (total / (subjects * 100) * 100).toFixed(2) : 0;
+    document.getElementById('resultSummary').innerText =
+      `Total Marks: ${total} / ${subjects * 100} | Percentage: ${percentage}%`;
+  }
+
+  function showAdminPanel() {
+    hideAll();
+    document.getElementById('adminPanel').style.display = 'block';
+
+    const table = document.getElementById('adminTable');
+    table.innerHTML = `
+      <tr>
+        <th>Username</th><th>Name</th><th>Group</th><th>Gender</th><th>Results</th><th>Actions</th>
+      </tr>`;
+    for (let uname in users) {
+      const u = users[uname];
+      if (u.role === 'student') {
+        let resultText = '';
+        for (let sub in u.results || {}) {
+          const mark = u.results[sub];
+          if (mark !== null && mark !== undefined && mark !== "") {
+            resultText += `${sub}: ${mark}<br>`;
+          }
+        }
+        table.innerHTML += `
+          <tr>
+            <td>${uname}</td>
+            <td>${u.name}</td>
+            <td>${u.group}</td>
+            <td>${u.gender}</td>
+            <td>${resultText || "No results"}</td>
+            <td class="actions">
+              <button onclick="editMarks('${uname}')">Edit Marks</button>
+              <button onclick="deleteUser('${uname}')">Delete</button>
+            </td>
+          </tr>`;
+      }
+    }
+  }
+
+  function editMarks(username) {
+    const subject = prompt("Enter subject name to edit (e.g., English):");
+    if (!subject) return;
+    const mark = prompt(`Enter new mark for ${subject}:`);
+    if (mark === null || mark === "" || isNaN(mark)) return;
+
+    if (!users[username].results) users[username].results = {};
+    users[username].results[subject] = parseInt(mark);
+    saveUsers();
+    showAdminPanel();
+  }
+
+  function deleteUser(username) {
+    if (confirm("Delete this student?")) {
+      delete users[username];
+      saveUsers();
+      showAdminPanel();
+    }
+  }
+
+  function createAccount() {
+    const uname = document.getElementById('regUsername').value;
+    const pwd = document.getElementById('regPassword').value;
+    const name = document.getElementById('regName').value;
+    const group = document.getElementById('regGroup').value;
+    const gender = document.getElementById('regGender').value;
+    const photoFile = document.getElementById('regPhoto').files[0];
+
+    if (users[uname]) {
+      alert("Username already exists!");
+      return;
+    }
+
+    const saveUser = (photoBase64 = '') => {
+      users[uname] = {
+        password: pwd,
+        role: 'student',
+        name, group, gender,
+        photo: photoBase64,
+        results: {}
+      };
+      saveUsers();
+      alert("Account created!");
+      showLogin();
+    };
+
+    if (photoFile) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        saveUser(e.target.result);
+      };
+      reader.readAsDataURL(photoFile);
+    } else {
+      saveUser('');
+    }
+  }
+
+  function resetPassword() {
+    const uname = document.getElementById('forgotUsername').value;
+    const newPwd = document.getElementById('newPassword').value;
+    if (users[uname]) {
+      users[uname].password = newPwd;
+      saveUsers();
+      alert("Password reset!");
+      showLogin();
+    } else {
+      alert("Username not found");
+    }
+  }
+
+  function logout() {
+    location.reload();
+  }
+
+  function showLogin() {
+    hideAll();
+    document.getElementById('login').style.display = 'block';
+  }
+
+  function showRegister() {
+    hideAll();
+    document.getElementById('register').style.display = 'block';
+  }
+
+  function showForgot() {
+    hideAll();
+    document.getElementById('forgot').style.display = 'block';
+  }
+
+  function hideAll() {
+    document.querySelectorAll('.container').forEach(el => el.style.display = 'none');
+  }
+</script>
+
+</body>
+</html>
