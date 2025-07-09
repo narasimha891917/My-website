@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Student Result System</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -77,19 +79,6 @@
       display: block;
       margin: 10px auto;
     }
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #printArea, #printArea * {
-        visibility: visible;
-      }
-      #printArea {
-        position: absolute;
-        left: 0;
-        top: 0;
-      }
-    }
   </style>
 </head>
 <body>
@@ -133,13 +122,13 @@
 <!-- Student Dashboard -->
 <div class="container dashboard" id="dashboard">
   <h2>Student Dashboard</h2>
-  <div id="printArea">
+  <div id="dashboardContent">
     <img id="studentPhoto" src="1.jpg" alt="Student Photo">
     <div id="studentDetails"></div>
     <table id="resultTable"></table>
     <div id="resultSummary" style="margin-top: 10px; font-weight: bold; text-align: center;"></div>
   </div>
-  <button onclick="window.print()">Print Result</button>
+  <button onclick="downloadPDF()">Download PDF</button>
   <div class="link" onclick="logout()">Logout</div>
 </div>
 
@@ -330,6 +319,29 @@
 
   function hideAll() {
     document.querySelectorAll('.container').forEach(el => el.style.display = 'none');
+  }
+
+  async function downloadPDF() {
+    const content = document.getElementById('dashboardContent');
+    const scale = 2;
+
+    const canvas = await html2canvas(content, {
+      scale: scale,
+      useCORS: true
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    const y = imgHeight < pdfHeight ? (pdfHeight - imgHeight) / 2 : 0;
+    pdf.addImage(imgData, 'PNG', 0, y, imgWidth, imgHeight);
+    pdf.save("student_result.pdf");
   }
 </script>
 
